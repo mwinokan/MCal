@@ -16,4 +16,8 @@ Data is stored in "~/Dropbox/MCal/data" by default and is amended on line 6 of t
   
 - Amending a calendar
 
-  - ```mcal add [relative day / file] [field] "[task]"``` Add a given task to the given field of the given date. Relative dates allowed as for viewing. In the case that a field does not exist it is appended.
+  - ```mcal add [relative day / file] [field] "[task]"``` Add a given task to the given field of the given date. Relative dates allowed as for viewing. In the case that a field does not exist it is appended. If [field] specified is "all" then [morn], [aftn], and [evng] will be modified.
+
+  - ```mcal mark [relative day / file] [field]``` Toggle completion of an [oth*] field.
+
+  - ```mcal edit [relative day / file]``` Opens the given calendar text file in ```nano```.

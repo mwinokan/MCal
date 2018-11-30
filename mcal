@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# To Do's
+# Add relative date commands for day's of the week
+# Add command to show entire week
+
 if [[ $# -eq 0 ]] ; then
   mcal today
   exit 0
@@ -18,18 +22,20 @@ fi
 # [morn] Optical transport
 # [aftn] Prjct Mngmt Workshop
 # [evng] Thesis plan
-# [othr] Order frictions
+# [oth1] Order frictions
 
 # auto-complete
 
-touch today
-touch add
-touch tomorrow
-touch yesterday
-touch morn
-touch aftn
-touch oth1
-touch evng
+touch ../today
+touch ../add
+touch ../tomorrow
+touch ../yesterday
+touch ../morn
+touch ../aftn
+touch ../oth1
+touch ../evng
+touch ../mark
+touch ../all
 
 # date-variables
 
@@ -48,14 +54,7 @@ FILE_TODAY=$TODAY".txt"
 FILE_TOMORROW=$TOMORROW".txt"
 FILE_YESTERDAY=$YESTERDAY".txt"
 
-# write files
-
-# echo " [date] "$HUMAN_TODAY > $FILE_TODAY
-# echo " [morn] "$HUMAN_TODAY >> $FILE_TODAY
-# echo " [aftn] "$HUMAN_TODAY >> $FILE_TODAY
-# echo " [evng] "$HUMAN_TODAY >> $FILE_TODAY
-# echo " [othr] "$HUMAN_TODAY >> $FILE_TODAY
-
+# add field entry
 if [ "$1" = "add" ] ; then
 
   # find the required date:
@@ -68,6 +67,9 @@ if [ "$1" = "add" ] ; then
   elif [ "$2" = "yesterday" ] ; then
     echo -e "\033[32m Amending yesterday... \033[0m"
     FILE_THIS=$FILE_YESTERDAY
+  elif [ "$2" = "" ] ; then
+    echo -e "\033[31m No file given. \033[0m"
+    exit 0
   else
     FILE_THIS=$2
     echo -e "\033[32m Amending "$FILE_THIS"... \033[0m"
@@ -81,13 +83,163 @@ if [ "$1" = "add" ] ; then
     THIS_DATE_HUMAN=$(date -j -f "%Y-%m-%d" "$THIS_DATE" "$DHUMAN")
     # write the required date:
     echo " [date] "$THIS_DATE_HUMAN > $FILE_THIS
+    if [ "$3" = "all" ] ; then
+      echo " [morn] "$4 >> $FILE_THIS
+      echo " [aftn] "$4 >> $FILE_THIS
+      echo " [evng] "$4 >> $FILE_THIS
+      exit 1
+    else
+      echo " [morn] " >> $FILE_THIS
+      echo " [aftn] " >> $FILE_THIS
+      echo " [evng] " >> $FILE_THIS
+    fi
+  fi
+
+  # store current data:
+  i=0
+  while read p; do
+    if [ $i -eq 0 ] ; then
+      echo "$p" > temp.txt
+      i=1
+    else 
+      echo "$p" >> temp.txt
+    fi
+  done < $FILE_THIS
+
+  if [ "$3" = "all" ] ; then
+
+    # loop over current data:
+    i=1
+    while read p; do
+
+      # first line is copied: 
+      if [ $i -eq 1 ] ; then
+        echo "$p" > $FILE_THIS
+        FIELD_GOAL="[morn]"
+      else
+        # compare fields:
+        FIELD=$(echo "$p" | cut -c1-6)
+        FIELD_GOAL_START=$(echo "$FIELD_GOAL" | cut -c1-4)
+        if [ "$FIELD" = "$FIELD_GOAL" ] ; then
+          echo "$FIELD"" ""$4" >> $FILE_THIS
+          if [ "$FIELD" = "[morn]" ] ; then FIELD_GOAL="[aftn]"; fi
+          if [ "$FIELD" = "[aftn]" ] ; then FIELD_GOAL="[evng]"; fi
+        else
+          echo "$p" >> $FILE_THIS
+        fi
+      fi
+      let "i=i+1"
+    done < temp.txt
+
+    exit 1
+
+  else
+
+    # loop over current data:
+    i=1
+    found=0
+    while read p; do
+
+      # first line is copied: 
+      if [ $i -eq 1 ] ; then
+        echo "$p" > $FILE_THIS
+        let "i=i+1"
+      else
+        # compare fields:
+        FIELD=$(echo "$p" | cut -c1-6)
+        FIELD_GOAL="[""$3""]"
+        FIELD_GOAL_START=$(echo "$FIELD_GOAL" | cut -c1-4)
+        if [ "$FIELD" = "$FIELD_GOAL" ] ; then
+          if [ "$FIELD_GOAL_START" = "[oth" ] ; then
+            echo "$FIELD_GOAL""n""$4" >> $FILE_THIS
+          else 
+            echo "$FIELD"" ""$4" >> $FILE_THIS
+          fi
+          found=1
+        else
+          echo "$p" >> $FILE_THIS
+          # if didn't find keyword and last line
+          NUMOFLINES=$(wc -l < "temp.txt")
+          if [ $found -eq 0 ] ; then
+            if [ $i -ge $NUMOFLINES ] ; then
+              echo -e "\033[32m New field created. \033[0m"
+              if [ "$FIELD_GOAL_START" = "[oth" ] ; then
+                echo "$FIELD_GOAL""n""$4" >> $FILE_THIS
+              else 
+                echo "$FIELD_GOAL"" ""$4" >> $FILE_THIS
+              fi
+            fi
+          fi
+        fi
+        let "i=i+1"
+      fi
+    done < temp.txt
+
+  fi
+
+  exit 1
+
+fi
+
+# open in nano
+
+if [ $1 = "edit" ] ; then
+  # find the required date:
+  if [ "$2" = "today" ] ; then
+    echo -e "\033[32m Editing today... \033[0m"
+    FILE_THIS=$FILE_TODAY
+  elif [ "$2" = "tomorrow" ] ; then
+    echo -e "\033[32m Editing tomorrow... \033[0m"
+    FILE_THIS=$FILE_TOMORROW
+  elif [ "$2" = "yesterday" ] ; then
+    echo -e "\033[32m Editing yesterday... \033[0m"
+    FILE_THIS=$FILE_YESTERDAY
+  elif [ "$2" = "" ] ; then
+    echo -e "\033[31m No file given. \033[0m"
+    exit 0
+  else
+    FILE_THIS=$2
+    echo -e "\033[32m Editing "$FILE_THIS"... \033[0m"
+  fi
+
+  nano $FILE_THIS
+  exit 0
+
+fi
+
+# mark to-do's:
+if [ "$1" = "mark" ] ; then
+
+  # find the required date:
+  if [ "$2" = "today" ] ; then
+    echo -e "\033[32m Toggling ["$3"] in today... \033[0m"
+    FILE_THIS=$FILE_TODAY
+  elif [ "$2" = "tomorrow" ] ; then
+    echo -e "\033[32m Toggling ["$3"] in tomorrow... \033[0m"
+    FILE_THIS=$FILE_TOMORROW
+  elif [ "$2" = "yesterday" ] ; then
+    echo -e "\033[32m Toggling ["$3"] in yesterday... \033[0m"
+    FILE_THIS=$FILE_YESTERDAY
+  elif [ "$2" = "" ] ; then
+    echo -e "\033[31m No file given. \033[0m"
+    exit 0
+  else
+    FILE_THIS=$2
+    echo -e "\033[32m Toggling ["$3"] in "$FILE_THIS"... \033[0m"
+  fi
+
+  # if required date does not exist:
+  if [ ! -f $FILE_THIS ]; then
+    # get the required date in human form:
+    echo -e "\033[32m New file created. \033[0m"
+    THIS_DATE=${FILE_THIS%.txt}
+    THIS_DATE_HUMAN=$(date -j -f "%Y-%m-%d" "$THIS_DATE" "$DHUMAN")
+    # write the required date:
+    echo " [date] "$THIS_DATE_HUMAN > $FILE_THIS
     echo " [morn] " >> $FILE_THIS
     echo " [aftn] " >> $FILE_THIS
     echo " [evng] " >> $FILE_THIS
-    echo " [oth1] " >> $FILE_THIS
   fi
-
-  # add to the required date file:
 
   # store current data:
   i=0
@@ -113,23 +265,18 @@ if [ "$1" = "add" ] ; then
       # compare fields:
       FIELD=$(echo "$p" | cut -c1-6)
       FIELD_GOAL="[""$3""]"
-      # echo "."$FIELD"."
-      # echo "."$FIELD_GOAL"."
+      FIELD_GOAL_START=$(echo "$FIELD_GOAL" | cut -c1-4)
+      STATUS=$(echo "$p" | cut -c7-7)
       if [ "$FIELD" = "$FIELD_GOAL" ] ; then
-        echo "$FIELD"" ""$4" >> $FILE_THIS
-        # echo "Wrote: ""$FIELD"" ""$4"
+        END=$(echo "$p" | cut -c8-)
+        if [ "$STATUS" = "n" ] ; then
+          echo "$FIELD""y""$END" >> $FILE_THIS
+        elif [ "$STATUS" = "y" ] ; then
+          echo "$FIELD""n""$END" >> $FILE_THIS
+        fi
         found=1
       else
-        echo "$p" >> $FILE_THIS
-        # if didn't find keyword and last line
-        NUMOFLINES=$(wc -l < "temp.txt")
-        # echo $i" "$NUMOFLINES
-        if [ $found -eq 0 ] ; then
-          if [ $i -ge $NUMOFLINES ] ; then
-            echo -e "\033[32m New field created. \033[0m"
-            echo "$FIELD_GOAL"" ""$4" >> $FILE_THIS
-          fi
-        fi
+        echo $p >> $FILE_THIS
       fi
       let "i=i+1"
     fi
@@ -141,19 +288,15 @@ fi
 
 # show calendar
 
-# find the required date:
+# find the correct file
 if [ "$1" = "today" ] ; then
-  # echo -e "\033[32m Showing today... \033[0m"
   FILE_THIS=$FILE_TODAY
 elif [ "$1" = "tomorrow" ] ; then
-  # echo -e "\033[32m Showing tomorrow... \033[0m"
   FILE_THIS=$FILE_TOMORROW
 elif [ "$1" = "yesterday" ] ; then
-  # echo -e "\033[32m Showing yesterday... \033[0m"
   FILE_THIS=$FILE_YESTERDAY
 else
   FILE_THIS=$1
-  # echo -e "\033[32m Showing "$FILE_THIS"... \033[0m"
 fi
 
 # if required date does not exist:
@@ -167,36 +310,43 @@ if [ ! -f $FILE_THIS ]; then
   echo " [morn] " >> $FILE_THIS
   echo " [aftn] " >> $FILE_THIS
   echo " [evng] " >> $FILE_THIS
-  echo " [oth1] " >> $FILE_THIS
 fi
 
 echo ""
+
 while read p; do
-  # echo -e "$p" | tr "[" "\033[34m["
 
-  # # recolor:
-  # p=$(echo "$p" | sed "s/\[date/\[\\\033[1;31mdate/g" | sed "s/date\]/date\\\033[0m\]\\\033[31m/g")
-  # p=$(echo "$p" | sed "s/\[morn/\[\\\033[1;34mmorn/g" | sed "s/morn\]/morn\\\033[0m\]\\\033[34m/g")
-  # p=$(echo "$p" | sed "s/\[aftn/\[\\\033[1;34maftn/g" | sed "s/aftn\]/aftn\\\033[0m\]\\\033[34m/g")
-  # p=$(echo "$p" | sed "s/\[evng/\[\\\033[1;34mevng/g" | sed "s/evng\]/evng\\\033[0m\]\\\033[34m/g")
-  # p=$(echo "$p" | sed "s/\[oth/\[\\\033[1;35moth/g" | sed "s/\]/\\\033[0m\]\\\033[35m/g")
-  
-  # # recolor:
-  p=$(echo "$p" | sed "s/\[date/\[\\\033[1;31mdate/g" | sed "s/date\]/date\\\033[0m\]\\\033[31m/g")
-  p=$(echo "$p" | sed "s/\[morn/\[\\\033[1;34mmorn/g" | sed "s/morn\]/morn\\\033[0m\]\\\033[34m/g")
-  p=$(echo "$p" | sed "s/\[aftn/\[\\\033[1;34maftn/g" | sed "s/aftn\]/aftn\\\033[0m\]\\\033[34m/g")
-  p=$(echo "$p" | sed "s/\[evng/\[\\\033[1;34mevng/g" | sed "s/evng\]/evng\\\033[0m\]\\\033[34m/g")
-  p=$(echo "$p" | sed  "s/\[oth/\[\\\033[1;35moth/g" | sed "s/\]/\\\033[0m\]\\\033[35m/g")
+  # split up the line:
+  FIELD=$(echo "$p" | cut -c2-5)
+  CONTENT=$(echo "$p" | cut -c8- )
+  STATUS=$(echo "$p" | cut -c7-7)
 
-  # recolor:
-  # p=$(echo "$p" | sed "s/\[date/\\\033[1;47;7;31m\[date/g" | sed "s/date\]/date\]\\\033[0m\\\033[31m/g")
-  # p=$(echo "$p" | sed "s/\[morn/\\\033[1;47;7;32m\[morn/g" | sed "s/morn\]/morn\]\\\033[0m\\\033[32m/g")
-  # p=$(echo "$p" | sed "s/\[aftn/\\\033[1;47;7;33m\[aftn/g" | sed "s/aftn\]/aftn\]\\\033[0m\\\033[33m/g")
-  # p=$(echo "$p" | sed "s/\[evng/\\\033[1;47;7;34m\[evng/g" | sed "s/evng\]/evng\]\\\033[0m\\\033[34m/g")
-  # p=$(echo "$p" | sed  "s/\[oth/\\\033[1;47;7;35m\[oth/g"  | sed         "s/\]/\]\\\033[0m\\\033[35m/g")
+  # set color
+  if [ "$FIELD" = "date" ] ; then
+    COL="38;5;202"
+  elif [ "$FIELD" = "morn" ] ; then
+    COL="34"
+  elif [ "$FIELD" = "aftn" ] ; then
+    COL="34"
+  elif [ "$FIELD" = "evng" ] ; then
+    COL="34"
+  else
+    if [ "$STATUS" = "y" ] ; then
+      COL="32"
+    elif [ "$STATUS" = "n" ] ; then
+      COL="31"
+    else
+      COL="35"
+    fi
+  fi
 
-  # LINE=$(echo "$p" | sed "s/\[/\[\\\033[1m/g" | sed "s/\]/\\\033[0m\]/g")
-  echo -e "\033[0m""$p"
+  # color strings
+  COL_CLEAR="\033[0m"
+  COL_FIELD="\033[1;""$COL""m"
+  COL_CONTENT="\033["$COL"m"
+
+  echo -e "$COL_CLEAR""[""$COL_FIELD""$FIELD""$COL_CLEAR""]"" ""$COL_CONTENT""$CONTENT"
+
 done < $FILE_THIS
 
 echo -e "\033[0m"
